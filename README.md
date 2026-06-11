@@ -2,7 +2,7 @@
 
 A Catppuccin-themed Spotify terminal UI in Python (Textual), inspired by
 [spotui](https://github.com/cjbassi/spotui) and integrating
-[spotagen](../spotagen) as an in-app AI playlist menu.
+[spotagen]([https://github.com/ms4ndst/spotagen) as an in-app AI playlist menu.
 
 ## Features
 
