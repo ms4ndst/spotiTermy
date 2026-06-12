@@ -181,11 +181,21 @@ class SpotiTermyApp(App[None]):
             self._load_playlist(track.id, track.name, track.uri)
             return
         if not self.device_id:
-            self.notify("No active device. Press 'd' to pick one.", severity="warning")
+            self.notify(
+                "No device picked yet. Opening device picker - select spotifyd-win.",
+                severity="warning",
+            )
+            self.run_action("devices")
             return
-        # Play the whole tracklist starting at this track.
+        # Play the whole tracklist starting at this track. Surface any error
+        # from the Web API instead of swallowing it - the silent failure was
+        # the previous "nothing happens when I press a track" footgun.
         uris = [t.uri for t in tracks if t.kind == "track" and t.uri]
-        self.client.start_playback(device_id=self.device_id, uris=uris, offset_uri=track.uri)
+        err = self.client.start_playback(
+            device_id=self.device_id, uris=uris, offset_uri=track.uri,
+        )
+        if err:
+            self.notify(f"Playback failed: {err}", severity="error", timeout=8)
 
     # ----- actions ----- #
 

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 import spotipy
+from spotipy.exceptions import SpotifyException
 from spotipy.oauth2 import SpotifyOAuth
 
 from .config import Settings, SPOTIFY_SCOPES, token_cache_path
@@ -307,11 +308,35 @@ class SpotifyClient:
         context_uri: str | None = None,
         uris: list[str] | None = None,
         offset_uri: str | None = None,
-    ) -> None:
+    ) -> str | None:
+        """Start playback. Returns None on success, error string on failure.
+
+        Spotify returns 404 NO_ACTIVE_DEVICE when the target device is known
+        but not currently in the active-playback state. The cure is a transfer
+        first - we retry once after `transfer_playback` when device_id is set.
+        """
         offset = {"uri": offset_uri} if offset_uri else None
-        self._safe(lambda: self.sp.start_playback(
-            device_id=device_id, context_uri=context_uri, uris=uris, offset=offset,
-        ))
+        try:
+            self.sp.start_playback(
+                device_id=device_id, context_uri=context_uri, uris=uris, offset=offset,
+            )
+            return None
+        except SpotifyException as exc:
+            msg = (exc.msg or str(exc)).strip()
+            # Transfer-then-retry rescue: only when we have a device_id and
+            # the error is the well-known "no active device" path.
+            if device_id and ("NO_ACTIVE_DEVICE" in msg.upper() or exc.http_status == 404):
+                try:
+                    self.sp.transfer_playback(device_id, force_play=False)
+                    self.sp.start_playback(
+                        device_id=device_id, context_uri=context_uri, uris=uris, offset=offset,
+                    )
+                    return None
+                except SpotifyException as exc2:
+                    return f"{exc2.http_status} {(exc2.msg or str(exc2)).strip()}"
+            return f"{exc.http_status} {msg}"
+        except Exception as exc:
+            return str(exc)
 
     def pause(self, device_id: str | None = None) -> None:
         self._safe(lambda: self.sp.pause_playback(device_id=device_id))
