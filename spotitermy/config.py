@@ -1,7 +1,8 @@
 """Settings + paths for spotiTermy.
 
-Configuration lives at `<user-config-dir>/spotitermy/config.toml`. The token
-cache (spotipy) sits next to it.
+Configuration lives at `<user-data-dir>/spotitermy/config.toml` (on Windows:
+`%LOCALAPPDATA%\\spotitermy\\config.toml`). The token cache (spotipy) sits
+next to it.
 
 A small layer because spotipy already handles the OAuth refresh dance.
 """
@@ -83,7 +84,7 @@ class Settings:
 
 
 def config_dir() -> Path:
-    return Path(platformdirs.user_config_dir(APP_NAME, appauthor=False))
+    return Path(platformdirs.user_data_dir(APP_NAME, appauthor=False, roaming=False))
 
 
 def config_path() -> Path:

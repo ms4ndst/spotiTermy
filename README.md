@@ -27,7 +27,7 @@ python -m venv .venv
 1. Create an app at https://developer.spotify.com/dashboard
 2. Add redirect URI: `http://127.0.0.1:8888/callback`
 3. Run the app once. It writes a stub config to
-   `%APPDATA%\spotitermy\config.toml`. Edit it and fill in `[spotify]`:
+   `%LOCALAPPDATA%\spotitermy\config.toml`. Edit it and fill in `[spotify]`:
 
 ```toml
 [spotify]
@@ -93,14 +93,14 @@ in as the same Spotify user. Check what account spotiTermy is logged in
 as:
 
 ```powershell
-Get-Content "$env:APPDATA\spotitermy\config.toml" | Select-String username
+Get-Content "$env:LOCALAPPDATA\spotitermy\config.toml" | Select-String username
 ```
 
 If it doesn't match the user shown in spotifyd-win's log (`Authenticated as
 '<user>'`), re-do OAuth as the correct account:
 
 ```powershell
-Remove-Item "$env:APPDATA\spotitermy\token.cache" -ErrorAction SilentlyContinue
+Remove-Item "$env:LOCALAPPDATA\spotitermy\token.cache" -ErrorAction SilentlyContinue
 spotitermy   # browser opens, log in with the matching account
 ```
 
