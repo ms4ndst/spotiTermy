@@ -16,18 +16,83 @@ A Catppuccin-themed Spotify terminal UI in Python (Textual), inspired by
 
 ## Install
 
+Requires **Python 3.10+**.
+
+### Windows (PowerShell)
+
 ```powershell
 cd C:\Users\magnus.sandstrom\Code\Repo\spotiTermy
 python -m venv .venv
 .venv\Scripts\python -m pip install -e .
 ```
 
+### Linux
+
+Quickest path — the bundled install script creates the venv and installs
+everything:
+
+```bash
+cd ~/Code/Repo/spotiTermy
+./install.sh          # base install
+./install.sh --ai     # also install the optional AI extras (anthropic, openai)
+```
+
+It picks the newest Python 3.10+ on your `PATH`, and if the `venv` module is
+missing (common on Debian/Ubuntu) it tells you the exact package to install.
+
+<details>
+<summary>Manual install</summary>
+
+The one difference from Windows is the venv layout: the interpreter lives at
+`.venv/bin/python` (forward slashes, `bin` not `Scripts`). Don't copy the
+Windows `.venv\Scripts\python` line into bash — the backslashes get stripped
+and it becomes `.venvScriptspython: command not found`.
+
+```bash
+cd ~/Code/Repo/spotiTermy
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+```
+
+Or activate the venv first, then the plain names are on your `PATH`:
+
+```bash
+source .venv/bin/activate
+pip install -e .
+```
+
+**Distro differences** — you only need a working `python3` with the `venv`
+module and `pip`. That's already present on most distros, but on Debian and
+Ubuntu the stdlib `venv` module is split into a separate package:
+
+```bash
+# Debian / Ubuntu
+sudo apt install python3 python3-venv python3-pip
+
+# Fedora / RHEL (python3 + venv + pip are included by default)
+sudo dnf install python3 python3-pip
+
+# Arch
+sudo pacman -S python python-pip
+```
+
+No other distro-specific steps are needed for spotiTermy itself — all Python
+dependencies come from PyPI via pip. (Audio playback is handled by a separate
+Spotify Connect device, not by this app; see [Playback device](#playback-device).)
+
+</details>
+
 ## Spotify credentials (one-time)
 
 1. Create an app at https://developer.spotify.com/dashboard
 2. Add redirect URI: `http://127.0.0.1:8888/callback`
-3. Run the app once. It writes a stub config to
-   `%LOCALAPPDATA%\spotitermy\config.toml`. Edit it and fill in `[spotify]`:
+3. Run the app once. It writes a stub config file — edit it and fill in
+   `[spotify]`. The location depends on your OS:
+
+   - **Windows:** `%LOCALAPPDATA%\spotitermy\config.toml`
+   - **Linux:** `$XDG_DATA_HOME/spotitermy/config.toml`, i.e.
+     `~/.local/share/spotitermy/config.toml` by default
+   - **macOS:** `~/Library/Application Support/spotitermy/config.toml`
 
 ```toml
 [spotify]
@@ -50,7 +115,10 @@ Env-var overrides also work: `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`,
 
 ## Run
 
-```powershell
+With the venv activated (or using `.venv\Scripts\spotitermy` /
+`.venv/bin/spotitermy` directly):
+
+```bash
 spotitermy
 # or
 python -m spotitermy --flavor latte --accent blue
@@ -101,6 +169,45 @@ If it doesn't match the user shown in spotifyd-win's log (`Authenticated as
 
 ```powershell
 Remove-Item "$env:LOCALAPPDATA\spotitermy\token.cache" -ErrorAction SilentlyContinue
+spotitermy   # browser opens, log in with the matching account
+```
+
+### spotifyd recipe (Linux, headless)
+
+Install [spotifyd](https://github.com/Spotifyd/spotifyd) from your distro's
+repos (`sudo dnf install spotifyd` on Fedora, `sudo pacman -S spotifyd` on
+Arch; on Debian/Ubuntu grab a release binary or `cargo install spotifyd`).
+It needs a Spotify **Premium** account and an audio backend already present
+on the system (PulseAudio/PipeWire on a typical desktop, or ALSA).
+
+Run it as a user systemd service so it starts on login and has access to your
+audio session (unlike a system service, which has neither audio nor your
+credential cache):
+
+```bash
+systemctl --user enable --now spotifyd
+```
+
+Or run it in the foreground once to confirm it authenticates:
+
+```bash
+spotifyd --no-daemon
+```
+
+Once online it shows up in spotiTermy's device picker (`d`).
+
+**Account match matters.** spotiTermy only sees Connect devices logged in as
+the same Spotify user. Check which account spotiTermy is configured for:
+
+```bash
+grep username ~/.local/share/spotitermy/config.toml
+```
+
+If it doesn't match the user shown in spotifyd's log (`Authenticated as
+'<user>'`), re-do OAuth as the correct account:
+
+```bash
+rm -f ~/.local/share/spotitermy/token.cache
 spotitermy   # browser opens, log in with the matching account
 ```
 
@@ -178,7 +285,7 @@ Accent is config-only — change it in `config.toml` and restart.
 
 You can also override per run:
 
-```powershell
+```bash
 spotitermy --flavor latte --accent blue
 spotitermy --flavor frappe --accent peach
 ```
